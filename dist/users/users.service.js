@@ -21,8 +21,8 @@ let UsersService = class UsersService {
     constructor(userModel) {
         this.userModel = userModel;
     }
-    async create(email, password) {
-        const user = new this.userModel({ email, password });
+    async create(userData) {
+        const user = new this.userModel(userData);
         return user.save();
     }
     async findByEmail(email) {
@@ -30,6 +30,12 @@ let UsersService = class UsersService {
     }
     async findById(id) {
         return this.userModel.findById(id).exec();
+    }
+    async findAll() {
+        return this.userModel.find({}, { password: 0 }).exec();
+    }
+    async updateProfile(userId, update) {
+        return this.userModel.findByIdAndUpdate(userId, { $set: update }, { new: true }).exec();
     }
 };
 exports.UsersService = UsersService;

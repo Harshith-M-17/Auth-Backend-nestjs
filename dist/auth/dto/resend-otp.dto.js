@@ -9,40 +9,21 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RegisterDto = void 0;
+exports.ResendOtpDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
-class RegisterDto {
+class ResendOtpDto {
 }
-exports.RegisterDto = RegisterDto;
-__decorate([
-    (0, swagger_1.ApiProperty)({ required: false, maxLength: 80 }),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], RegisterDto.prototype, "firstName", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ required: false, maxLength: 80 }),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], RegisterDto.prototype, "lastName", void 0);
+exports.ResendOtpDto = ResendOtpDto;
 __decorate([
     (0, swagger_1.ApiProperty)(),
     (0, class_validator_1.IsEmail)(),
     __metadata("design:type", String)
-], RegisterDto.prototype, "email", void 0);
+], ResendOtpDto.prototype, "email", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ required: false }),
+    (0, swagger_1.ApiProperty)({ required: false, enum: ['user', 'admin'] }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], RegisterDto.prototype, "phone", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ required: false }),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], RegisterDto.prototype, "otp", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ required: false, enum: ['user', 'admin'], default: 'user' }),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], RegisterDto.prototype, "role", void 0);
-//# sourceMappingURL=register.dto.js.map
+], ResendOtpDto.prototype, "role", void 0);
+//# sourceMappingURL=resend-otp.dto.js.map

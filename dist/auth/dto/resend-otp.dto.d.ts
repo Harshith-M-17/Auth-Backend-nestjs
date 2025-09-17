@@ -1,5 +1,4 @@
-export declare class LoginDto {
+export declare class ResendOtpDto {
     email: string;
-    otp?: string;
     role?: 'user' | 'admin';
 }

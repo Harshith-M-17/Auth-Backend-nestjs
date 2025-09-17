@@ -6,11 +6,31 @@ export declare class AuthService {
     private readonly usersService;
     private readonly jwtService;
     constructor(usersService: UsersService, jwtService: JwtService);
-    register(registerDto: RegisterDto): Promise<{
+    private otpResendCooldown;
+    resendOtp(email: string, role?: 'user' | 'admin'): Promise<{
+        message: string;
         email: string;
-        id: any;
+    }>;
+    verifyRegisterOtp(registerDto: RegisterDto): Promise<{
+        access_token: string;
+        message: string;
+    }>;
+    verifyLoginOtp(loginDto: LoginDto): Promise<{
+        access_token: string;
+        message: string;
+        role: "user" | "admin";
+    }>;
+    private otpStore;
+    sendOtp(email: string): Promise<void>;
+    verifyOtp(email: string, otp: string): Promise<{
+        access_token: string;
+    }>;
+    register(registerDto: RegisterDto): Promise<{
+        message: string;
+        email: string;
     }>;
     login(loginDto: LoginDto): Promise<{
-        access_token: string;
+        message: string;
+        email: string;
     }>;
 }

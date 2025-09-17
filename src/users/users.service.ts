@@ -7,8 +7,8 @@ import { User } from './user.schema';
 export class UsersService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
-  async create(email: string, password: string): Promise<User> {
-    const user = new this.userModel({ email, password });
+  async create(userData: Partial<User>): Promise<User> {
+    const user = new this.userModel(userData);
     return user.save();
   }
 
@@ -18,5 +18,17 @@ export class UsersService {
 
   async findById(id: string): Promise<User | null> {
     return this.userModel.findById(id).exec();
+  }
+
+  async findAll(): Promise<User[]> {
+    return this.userModel.find({}, { password: 0 }).exec();
+  }
+
+  async updateProfile(userId: string, update: { firstName?: string; lastName?: string }): Promise<User | null> {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      { $set: update },
+      { new: true }
+    ).exec();
   }
 }
