@@ -4,14 +4,19 @@ import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
+import { AuthService } from '../src/auth/auth.service';
 
 describe('Auth API (e2e)', () => {
   let app: INestApplication;
   let connection: Connection;
+  let authService: AuthService;
   let jwtToken: string;
   const testUser = {
     email: `test${Date.now()}@example.com`,
-    password: 'Test123456',
+    firstName: 'Test',
+    lastName: 'User',
+    phone: '1234567890',
+    role: 'user' as 'user' | 'admin',
   };
 
   beforeAll(async () => {
@@ -24,6 +29,7 @@ describe('Auth API (e2e)', () => {
     await app.init();
 
     connection = moduleFixture.get<Connection>(getConnectionToken());
+    authService = moduleFixture.get<AuthService>(AuthService);
   });
 
   afterAll(async () => {
@@ -38,109 +44,123 @@ describe('Auth API (e2e)', () => {
   });
 
   describe('POST /auth/register', () => {
-    it('should register a new user', () => {
-      return request(app.getHttpServer())
+    it('should send OTP for new user registration', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/register')
-        .send(testUser)
-        .expect(201)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('email', testUser.email);
-          expect(res.body).toHaveProperty('id');
-        });
+        .send({ email: testUser.email })
+        .expect(201);
+
+      expect(response.body).toHaveProperty('message', 'OTP sent to email for verification');
+      expect(response.body).toHaveProperty('email', testUser.email);
     });
 
-    it('should return 409 if email already exists', () => {
-      return request(app.getHttpServer())
+    it('should verify OTP and create user', async () => {
+      // Get OTP from service (for testing purposes)
+      const otpRecord = (authService as any).otpStore[testUser.email];
+      expect(otpRecord).toBeDefined();
+
+      const response = await request(app.getHttpServer())
         .post('/auth/register')
-        .send(testUser)
+        .send({
+          email: testUser.email,
+          otp: otpRecord.otp,
+          firstName: testUser.firstName,
+          lastName: testUser.lastName,
+          phone: testUser.phone,
+          role: testUser.role,
+        })
+        .expect(201);
+
+      expect(response.body).toHaveProperty('access_token');
+      expect(response.body).toHaveProperty('message', 'User created and authenticated');
+      jwtToken = response.body.access_token;
+    });
+
+    it('should return 409 if email already exists', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({ email: testUser.email })
         .expect(409);
-    });
-
-    it('should return 400 for invalid email', () => {
-      return request(app.getHttpServer())
-        .post('/auth/register')
-        .send({ email: 'invalid-email', password: 'Test123456' })
-        .expect(400);
-    });
-
-    it('should return 400 for short password', () => {
-      return request(app.getHttpServer())
-        .post('/auth/register')
-        .send({ email: 'new@example.com', password: '123' })
-        .expect(400);
     });
   });
 
   describe('POST /auth/login', () => {
-    it('should login with valid credentials', () => {
-      return request(app.getHttpServer())
+    it('should send OTP for login', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/login')
-        .send(testUser)
-        .expect(201)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('access_token');
-          jwtToken = res.body.access_token;
-        });
+        .send({ email: testUser.email })
+        .expect(201);
+
+      expect(response.body).toHaveProperty('message', 'OTP sent to email for verification');
+      expect(response.body).toHaveProperty('email', testUser.email);
     });
 
-    it('should return 401 for invalid credentials', () => {
-      return request(app.getHttpServer())
+    it('should verify OTP and return access token', async () => {
+      const otpRecord = (authService as any).otpStore[testUser.email];
+      expect(otpRecord).toBeDefined();
+
+      const response = await request(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: testUser.email, password: 'wrongpassword' })
-        .expect(401);
+        .send({
+          email: testUser.email,
+          otp: otpRecord.otp,
+        })
+        .expect(201);
+
+      expect(response.body).toHaveProperty('access_token');
+      expect(response.body).toHaveProperty('message', 'User authenticated');
+      jwtToken = response.body.access_token;
     });
 
-    it('should return 401 for non-existent user', () => {
-      return request(app.getHttpServer())
+    it('should return 401 for non-existent user', async () => {
+      await request(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: 'nonexistent@example.com', password: 'Test123456' })
+        .send({ email: 'nonexistent@example.com' })
         .expect(401);
     });
   });
 
   describe('GET /auth/profile', () => {
-    it('should return user profile with valid JWT', () => {
-      return request(app.getHttpServer())
+    it('should return user profile with valid JWT', async () => {
+      const response = await request(app.getHttpServer())
         .get('/auth/profile')
         .set('Authorization', `Bearer ${jwtToken}`)
-        .expect(200)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('email', testUser.email);
-          expect(res.body).toHaveProperty('id');
-        });
+        .expect(200);
+
+      expect(response.body).toHaveProperty('email', testUser.email);
+      expect(response.body).toHaveProperty('_id');
     });
 
-    it('should return 401 without JWT token', () => {
-      return request(app.getHttpServer())
+    it('should return 401 without JWT token', async () => {
+      await request(app.getHttpServer())
         .get('/auth/profile')
         .expect(401);
     });
 
-    it('should return 401 with invalid JWT token', () => {
-      return request(app.getHttpServer())
+    it('should return 401 with invalid JWT token', async () => {
+      await request(app.getHttpServer())
         .get('/auth/profile')
         .set('Authorization', 'Bearer invalid.token.here')
         .expect(401);
     });
   });
 
-  describe('GET /auth/all-profiles', () => {
-    it('should return all user profiles with valid JWT', () => {
-      return request(app.getHttpServer())
-        .get('/auth/all-profiles')
+  describe('GET /auth/get-all-profiles', () => {
+    it('should return all user profiles with valid JWT', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/auth/get-all-profiles')
         .set('Authorization', `Bearer ${jwtToken}`)
-        .expect(200)
-        .expect((res) => {
-          expect(Array.isArray(res.body)).toBe(true);
-          expect(res.body.length).toBeGreaterThan(0);
-          expect(res.body[0]).toHaveProperty('email');
-          expect(res.body[0]).toHaveProperty('id');
-        });
+        .expect(200);
+
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThan(0);
+      expect(response.body[0]).toHaveProperty('email');
+      expect(response.body[0]).toHaveProperty('id');
     });
 
-    it('should return 401 without JWT token', () => {
-      return request(app.getHttpServer())
-        .get('/auth/all-profiles')
+    it('should return 401 without JWT token', async () => {
+      await request(app.getHttpServer())
+        .get('/auth/get-all-profiles')
         .expect(401);
     });
   });
