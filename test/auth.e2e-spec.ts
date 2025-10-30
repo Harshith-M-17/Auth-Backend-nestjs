@@ -45,17 +45,26 @@ describe('Auth API (e2e)', () => {
 
   describe('POST /auth/register', () => {
     it('should send OTP for new user registration', async () => {
+      // Mock sendOtp to avoid actual email sending
+      jest.spyOn(authService as any, 'sendOtp').mockResolvedValue(undefined);
+      
       const response = await request(app.getHttpServer())
         .post('/auth/register')
         .send({ email: testUser.email })
         .expect(201);
-
+      
       expect(response.body).toHaveProperty('message', 'OTP sent to email for verification');
       expect(response.body).toHaveProperty('email', testUser.email);
+      
+      // Manually set OTP for testing
+      (authService as any).otpStore[testUser.email] = {
+        otp: '123456',
+        expiresAt: Date.now() + 300000,
+      };
     });
 
     it('should verify OTP and create user', async () => {
-      // Get OTP from service (for testing purposes)
+      // Ensure OTP is in store
       const otpRecord = (authService as any).otpStore[testUser.email];
       expect(otpRecord).toBeDefined();
 
@@ -86,6 +95,9 @@ describe('Auth API (e2e)', () => {
 
   describe('POST /auth/login', () => {
     it('should send OTP for login', async () => {
+      // Mock sendOtp to avoid actual email sending
+      jest.spyOn(authService as any, 'sendOtp').mockResolvedValue(undefined);
+      
       const response = await request(app.getHttpServer())
         .post('/auth/login')
         .send({ email: testUser.email })
@@ -93,6 +105,12 @@ describe('Auth API (e2e)', () => {
 
       expect(response.body).toHaveProperty('message', 'OTP sent to email for verification');
       expect(response.body).toHaveProperty('email', testUser.email);
+      
+      // Manually set OTP for testing
+      (authService as any).otpStore[testUser.email] = {
+        otp: '654321',
+        expiresAt: Date.now() + 300000,
+      };
     });
 
     it('should verify OTP and return access token', async () => {
